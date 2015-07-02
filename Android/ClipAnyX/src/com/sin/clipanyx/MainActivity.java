@@ -7,6 +7,7 @@ import android.content.ClipData;
 import android.content.ClipData.Item;
 import android.content.ClipDescription;
 import android.content.ClipboardManager;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.CheckBox;
@@ -32,6 +33,8 @@ public class MainActivity extends BaseActivity {
 	private int logid = 0;
 
 	private boolean running = true;
+
+	private SharedPreferences preferences;
 
 	private ClipboardManager clipboard;
 
@@ -69,6 +72,11 @@ public class MainActivity extends BaseActivity {
 
 		clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 
+		preferences = getPreferences(MODE_PRIVATE);
+
+		gapsec = preferences.getInt("gapsec", 10);
+		uid = preferences.getString("uid", "" + System.currentTimeMillis());
+
 		((EditText) findViewById(R.id.et_gapsec)).setText("" + gapsec);
 		((EditText) findViewById(R.id.et_token)).setText(uid);
 
@@ -87,6 +95,8 @@ public class MainActivity extends BaseActivity {
 				}
 				((EditText) findViewById(R.id.et_gapsec)).setText("" + gapsec);
 				((EditText) findViewById(R.id.et_token)).setText(uid);
+
+				preferences.edit().putInt("gapsec", gapsec).putString("uid", uid).commit();
 			}
 		});
 
@@ -95,36 +105,37 @@ public class MainActivity extends BaseActivity {
 			@Override
 			public void call(Object... args) {
 				while (running) {
-					BmobQuery<TextData> query = new BmobQuery<TextData>();
-					query.order("-createdAt");
-					query.addWhereEqualTo("uid", uid);
-					query.setLimit(1);
-					query.findObjects(MainActivity.this, new FindListener<TextData>() {
+					if (((CheckBox) findViewById(R.id.cb_enable)).isChecked()) {
+						BmobQuery<TextData> query = new BmobQuery<TextData>();
+						query.order("-createdAt");
+						query.addWhereEqualTo("uid", uid);
+						query.setLimit(1);
+						query.findObjects(MainActivity.this, new FindListener<TextData>() {
 
-						@Override
-						public void onSuccess(List<TextData> dats) {
-							if (dats.size() > 0) {
-								String newText = dats.get(0).text;
-								if (!newText.equals(lastText) || lastText == null) {
-									lastText = newText;
+							@Override
+							public void onSuccess(List<TextData> dats) {
+								if (dats.size() > 0) {
+									String newText = dats.get(0).text;
+									if (newText != null && !newText.equals(lastText) || lastText == null) {
+										lastText = newText;
 
-									addLog("Load:" + lastText);
-									ClipData clipData = ClipData.newPlainText("tp", lastText);
-									getClipboard().setPrimaryClip(clipData);
+										addLog("Load:" + lastText);
+										ClipData clipData = ClipData.newPlainText("tp", lastText);
+										getClipboard().setPrimaryClip(clipData);
+									}
+								}
+								if (lastText == null) {
+									lastText = "";
 								}
 							}
-							if (lastText == null) {
+
+							@Override
+							public void onError(int arg0, String arg1) {
+								addLog("onFailure " + arg0 + " " + arg1);
 								lastText = "";
 							}
-						}
-
-						@Override
-						public void onError(int arg0, String arg1) {
-							addLog("onFailure " + arg0 + " " + arg1);
-							lastText = "";
-						}
-					});
-
+						});
+					}
 					try {
 						Thread.sleep(gapsec * 1000);
 					} catch (Exception e) {
@@ -139,7 +150,7 @@ public class MainActivity extends BaseActivity {
 			@Override
 			public void call(Object... args) {
 				while (running) {
-					if (getClipboard().getPrimaryClipDescription().hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)) {
+					if (((CheckBox) findViewById(R.id.cb_enable)).isChecked() && getClipboard().getPrimaryClipDescription().hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)) {
 						ClipData cdText = clipboard.getPrimaryClip();
 						Item item = cdText.getItemAt(0);
 						if (item.getText() != null) {
