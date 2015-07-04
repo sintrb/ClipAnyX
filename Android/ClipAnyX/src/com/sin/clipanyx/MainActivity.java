@@ -150,7 +150,7 @@ public class MainActivity extends BaseActivity {
 			@Override
 			public void call(Object... args) {
 				while (running) {
-					if (((CheckBox) findViewById(R.id.cb_enable)).isChecked() && getClipboard().getPrimaryClipDescription().hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)) {
+					if (((CheckBox) findViewById(R.id.cb_enable)).isChecked() && getClipboard().getPrimaryClipDescription() != null && getClipboard().getPrimaryClipDescription().hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)) {
 						ClipData cdText = clipboard.getPrimaryClip();
 						Item item = cdText.getItemAt(0);
 						if (item.getText() != null) {
